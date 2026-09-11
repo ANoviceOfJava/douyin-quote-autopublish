@@ -24,6 +24,8 @@ STAGES = [
 ]
 
 TERMINAL_BEFORE_CONFIRM = {"submitted", "verified"}
+SOURCE_ROLES = {"exposure", "commentary", "official", "user_supplied"}
+STAGE_INDEX = {stage: index for index, stage in enumerate(STAGES)}
 
 
 def now_iso() -> str:
@@ -91,11 +93,13 @@ def cmd_init(args: argparse.Namespace) -> None:
         "outputs_dir": str(Path(args.outputs_dir).resolve()),
         "stage": "intake",
         "topic": {},
-        "source": {},
-        "content": {},
+        "source": {"role": None, "published_at": None, "heat_evidence": None},
+        "content": {"angle": None, "must_include": [], "excluded_outcomes": [], "title": None, "tags": [], "caption_mode": None, "template": None},
         "images": [],
         "music": {},
-        "schedule": {"timezone": "Asia/Shanghai", "confirmed": False, "status": "unset"},
+        "publish_policy": "confirm",
+        "auto_publish": {"eligible": False, "reason": None, "event_fingerprint": None, "published_at": None, "publish_status": None},
+        "schedule": {"timezone": "Asia/Shanghai", "requested_at": None, "minimum_allowed_at": None, "actual_at": None, "adjustment_reason": None, "confirmed": False, "status": "unset"},
         "browser": {"type": "iab", "tab_id": None, "url": None, "session_state": "unknown"},
         "fact_sources": [],
         "qa": {},
@@ -115,8 +119,9 @@ def cmd_set_stage(args: argparse.Namespace) -> None:
         raise SystemExit(f"unknown stage: {args.stage}")
     path = Path(args.state)
     state = load_state(path)
-    if args.stage in TERMINAL_BEFORE_CONFIRM and not state.get("schedule", {}).get("confirmed"):
-        raise SystemExit("cannot enter submitted/verified before schedule.confirmed=true")
+    autonomous_ready = state.get("publish_policy") == "autonomous" and state.get("auto_publish", {}).get("eligible") is True
+    if args.stage in TERMINAL_BEFORE_CONFIRM and not state.get("schedule", {}).get("confirmed") and not autonomous_ready:
+        raise SystemExit("cannot enter submitted/verified before schedule confirmation or autonomous eligibility")
     state["stage"] = args.stage
     save_state(path, state)
     print(args.stage)
@@ -135,8 +140,10 @@ def cmd_confirm_schedule(args: argparse.Namespace) -> None:
     path = Path(args.state)
     state = load_state(path)
     schedule = state.setdefault("schedule", {})
-    if not schedule.get("date") or not schedule.get("time"):
-        raise SystemExit("schedule.date and schedule.time are required before confirmation")
+    if not schedule.get("requested_at") or not schedule.get("actual_at"):
+        raise SystemExit("schedule.requested_at and schedule.actual_at are required before confirmation")
+    if schedule.get("requested_at") != schedule.get("actual_at") and not schedule.get("adjustment_reason"):
+        raise SystemExit("schedule adjusted time requires adjustment_reason")
     schedule["confirmed"] = True
     schedule["confirmed_at"] = now_iso()
     schedule["status"] = "confirmed"
@@ -169,16 +176,28 @@ def validate_state(state: dict[str, Any]) -> list[str]:
                 errors.append("unverified topic cannot advance")
             if topic.get("freshness_decision") == "expired":
                 errors.append("expired topic cannot advance")
+    stage_index = STAGE_INDEX.get(state.get("stage"), -1)
+    source = state.get("source")
+    if stage_index >= STAGE_INDEX["source_ready"]:
+        if not isinstance(source, dict) or source.get("role") not in SOURCE_ROLES:
+            errors.append("source.role must be exposure/commentary/official/user_supplied")
+    content = state.get("content")
+    if stage_index >= STAGE_INDEX["content_ready"]:
+        if not isinstance(content, dict) or not content.get("angle"):
+            errors.append("content.angle is required before upload")
     schedule = state.get("schedule")
     if not isinstance(schedule, dict):
         errors.append("schedule must be an object")
     else:
-        if schedule.get("confirmed") and (not schedule.get("date") or not schedule.get("time")):
-            errors.append("confirmed schedule requires date and time")
+        if schedule.get("confirmed") and (not schedule.get("actual_at")):
+            errors.append("confirmed schedule requires actual_at")
+        if schedule.get("confirmed") and schedule.get("requested_at") != schedule.get("actual_at") and not schedule.get("adjustment_reason"):
+            errors.append("adjusted confirmed schedule requires adjustment_reason")
         if schedule.get("confirmed") and not schedule.get("confirmed_at"):
             errors.append("confirmed schedule requires confirmed_at")
-    if state.get("stage") in TERMINAL_BEFORE_CONFIRM and not (schedule or {}).get("confirmed"):
-        errors.append("submitted/verified requires schedule.confirmed=true")
+    autonomous_ready = state.get("publish_policy") == "autonomous" and state.get("auto_publish", {}).get("eligible") is True
+    if state.get("stage") in TERMINAL_BEFORE_CONFIRM and not (schedule or {}).get("confirmed") and not autonomous_ready:
+        errors.append("submitted/verified requires schedule confirmation or autonomous eligibility")
     return errors
 
 

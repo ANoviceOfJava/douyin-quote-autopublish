@@ -17,7 +17,11 @@ description: "自动化完成最新热点发现、抖音金句图选材、视频
 ## 不可违反的规则
 
 - 内容默认追最新热点，不从旧素材池里挑过时话题冒充热点。热点新鲜度和事实核验与画面质量同等重要。
-- 最终发布前必须让用户明确确认标题、正文、配图、背景音乐和发布时间。未得到用户确认，不得点击最终“发布”按钮。
+- 发布前必须先确定 `content.angle`，并确保标题、图片字幕、正文首段和结尾问题都围绕同一叙事主线。
+- 一旦确定使用 `native-subtitle-quote-image` 的原生字幕模式，不得为了去重或排版擅自改成脚本字幕、自制信息卡或其他替代方案。无法解决时必须停下让用户决定。
+- 自媒体热点叙事优先使用事件发生时的最热曝光视频；官方通报和新闻播报默认只用于事实核验，不替代曝光素材。
+- 默认模式必须在最终发布前让用户确认标题、正文、配图、背景音乐和发布时间。未得到用户确认，不得点击最终“发布”按钮。
+- 用户明确指定 `publish_policy=autonomous` 时，跳过人工确认并按自动发布门直接发布；高风险内容直接跳过，见 [references/autonomous-publish-policy.md](references/autonomous-publish-policy.md)。
 - 登录缺失、验证码、短信验证码、扫码确认或账号安全验证必须中断，让用户处理。不得绕过验证，不得代替用户完成 CAPTCHA，不得索取密码或验证码。
 - 复用同一个内置浏览器会话，不关闭登录页或发布页，不清理 Cookies，不导出或落盘 Cookie。优先使用 `markHandoff` 保留等待登录的页面，使用 `markDeliverable` 保留已提交结果页。
 - 热点、谣言、截图和网络传言必须核验“具体事件是什么、谁发布、何时发生、何时辟谣、如何定性”。标题不得只有情绪，不能出现“一个消息/一件事情”却不说明事件对象的悬空表达。
@@ -32,13 +36,25 @@ description: "自动化完成最新热点发现、抖音金句图选材、视频
 - `0–24 小时`：优先使用。
 - `24–72 小时`：可使用，但必须有持续发酵或新进展。
 - `超过 72 小时`：默认淘汰。只有出现新的权威进展，或用户明确要求做回顾时，才可继续。
-- 必须在抖音热点、百度热搜、微博热搜、头条热榜或同等平台看到明确热度信号。
+- 必须在微博热搜、抖音热点榜、今日头条热榜、知乎热榜、B站热门或同等平台看到明确热度信号。
 - 必须由至少两个独立来源交叉确认；谣言、爆料、截图类必须有权威媒体、官方账号或当事机构回应。
 - 必须能找到带烧录字幕或完整口播的视频素材，适合拆成金句图。
 - 优先“高热度 + 强共鸣 + 可核验 + 可视觉化”，不追灾难、血腥、隐私、未成年人受害、未经证实的刑事指控和金融荐股。
 - 状态文件必须记录：事件日期、首次发现时间、发现时间、当前年龄、来源 URL、热度证据和核验结论。
 
-详细来源、评分和淘汰规则见 [references/latest-hot-topics.md](references/latest-hot-topics.md)。
+详细来源、评分和淘汰规则见 [references/latest-hot-topics.md](references/latest-hot-topics.md)。真实执行中的叙事、原生字幕、草稿恢复、定时时间与删除坑位见 [references/lessons-and-guardrails.md](references/lessons-and-guardrails.md)。
+
+## 叙事与模式硬门
+
+- 在 `content` 中记录 `angle`、`must_include` 和 `excluded_outcomes`。如果用户要求只讲事件，后续通报、退款、校方承担、专项核查不得出现在标题、图片字幕或正文中。
+- 标题的主语和冲突、图片字幕的推进顺序、正文第一段必须指向同一个事件和同一个矛盾点。三者不一致时禁止进入上传阶段。
+- `source.role` 只能是 `exposure`、`commentary`、`official` 或 `user_supplied`。热点事件默认优先 `exposure`。
+- 使用曝光视频时记录 `published_at` 和 `heat_evidence`，避免拿后发的官方通报冒充原始曝光素材。
+- 原生字幕成品必须通过 OCR 回读查重。主画面与字幕条不能出现同句；同一字幕段只选一个时间点；相邻时间点不得落在切换残影上。
+- 自定义信息卡、脚本字幕或其他替代方案只有在用户明确同意后才能替换原生模式。
+- 用户要求“原始图片 + 白底说明”时，切换到 `mixed-original-carousel` 模式，不再使用原生字幕拼图。固定五图结构：原始画面封面并叠加事件名、白底黑字完整说明、三张跨来源事件图。
+- `mixed-original-carousel` 的抖音标题使用短事件名，正文只放话题标签，不重复事件说明。
+- 同一天发布多条时，需要逐条上传、逐条定时、逐条提交；不要同时保留多个未发布草稿。每条提交后刷新作品管理，确认标题、张数、时间和状态。
 
 ## 开始任务
 
@@ -68,7 +84,7 @@ python <SKILL_DIR>/scripts/workflow_state.py set-stage \
 
 python <SKILL_DIR>/scripts/workflow_state.py set \
   --state <WORK_DIR>/workflow-state.json \
-  --json '{"topic":{"title":"...","event_date":"2026-09-10","discovered_at":"2026-09-10T14:00:00+08:00","age_hours":4,"source_urls":["..."],"heat_evidence":"抖音热点榜第3","fact_status":"confirmed"}}'
+  --json '{"topic":{"title":"...","event_date":"2026-09-10","discovered_at":"2026-09-10T14:00:00+08:00","age_hours":4,"source_urls":["..."],"heat_evidence":"抖音热点榜第3","fact_status":"confirmed"},"source":{"role":"exposure","published_at":"2026-09-10T15:00:00+08:00","heat_evidence":"1018 热度"},"content":{"angle":"学校让班级平摊滤芯费","must_include":["31个滤芯","8680元","每班98元"],"excluded_outcomes":["全额清退","校方承担"]}}'
 ```
 
 ## 阶段状态机
@@ -90,7 +106,7 @@ python <SKILL_DIR>/scripts/workflow_state.py set \
 ### `source_ready`
 
 - 按 [references/video-to-assets.md](references/video-to-assets.md) 获取本地视频。
-- 保存作品 ID、原始链接、作者、标题、下载路径和字幕来源。
+- 保存作品 ID、原始链接、作者、标题、发布时间、热度证据、下载路径、字幕来源和 `source.role`。
 - 使用 `yt-dlp` 时优先复用浏览器登录态；若读取失败，停在登录要求，不导出 Cookie。
 
 ### `assets_ready`
@@ -99,13 +115,17 @@ python <SKILL_DIR>/scripts/workflow_state.py set \
 - 选择有完整语义链的句子，生成 3:4 JPG。
 - 对成品做 OCR 回读、尺寸、张数、主图比例和字幕完整性质检。
 - 两行字幕优先使用“1 主图 + 2 字幕条”或降低 `hero-fraction`；不要为了固定 4 条把整句裁掉。
+- 主画面优先使用无底部字幕的帧；如果主画面带字幕，主画面与字幕条不得选到同一句。
+- 同一字幕段只选一个时间点，相邻点至少间隔一个完整切换，通常 `>= 0.8 秒`；成品必须 OCR 回读确认无重复。
+- `mixed-original-carousel` 模式必须保存五图顺序：封面、完整说明、事件图1、事件图2、事件图3。
+- 事件图至少跨越两个公开来源。封面必须来自原始事件画面，不允许使用纯白底说明卡。
 - 保存最终图片列表到状态文件。
 
 ### `content_ready`
 
 - 先核验事件，再写标题和正文。
 - 标题建议格式：`最新事件 + 冲突/问题`。
-- 正文顺序：事件事实 → 最新进展或权威结论 → 为什么会共鸣 → 价值判断 → 互动问题。
+- 正文顺序必须服从 `content.angle`。如果用户只要事件，正文只写事件事实、费用拆解和追问，不写处理结果。
 - 正文不得省略事件对象。热点截图、海报或传言必须写清“谁、何时、宣称了什么、后来如何回应”。
 - 话题标签 4–6 个，包含事件词、议题词和账号名。
 - 对谣言类内容必须记录至少一个权威来源。
@@ -127,11 +147,21 @@ python <SKILL_DIR>/scripts/workflow_state.py set \
 - 按 [references/douyin-publish-playbook.md](references/douyin-publish-playbook.md) 上传图片并填写内容。
 - 标题、正文、图片顺序、封面、音乐、公开范围、保存权限必须逐项回读。
 - 富文本正文重写前先全选清空，防止旧文案与新文案拼接。
+- `mixed-original-carousel` 模式：标题填短事件名，正文只填标签。不要重复写入事件说明或长文案。
 - 更新状态为 `awaiting_schedule_confirmation`，等待用户确认发布时间。
 
 ### `awaiting_schedule_confirmation`
 
-- 向用户展示最终发布摘要：热点及新鲜度、来源、标题、正文首段、图片数量、音乐、时间、可见范围。
+- 向用户展示最终发布摘要：热点及新鲜度、`source.role`、叙事角度、排除的结果事实、图片字幕顺序、标题、正文首段、音乐、可见范围，以及用户请求时间、平台最早允许时间和实际回读时间。
+- 抖音定时要求至少晚于当前时间 2 小时、最多 14 天。用户时间不满足时，不得默默使用平台调整值；必须先让用户确认调整后的时间。
+- 多条内容需要同一天发布时，每提交一条后都回到内容管理页核验，再开始下一条。不要把“发布成功”提示当作最终成功，以内容管理列表中的时间、张数和状态为准。
+- 平台回读时间写入状态文件后再确认：
+
+```bash
+python <SKILL_DIR>/scripts/workflow_state.py set \
+  --state <WORK_DIR>/workflow-state.json \
+  --json '{"schedule":{"requested_at":"2026-09-10 20:30","minimum_allowed_at":"2026-09-10 20:45","actual_at":"2026-09-10 20:45","adjustment_reason":"平台要求至少提前2小时"}}'
+```
 - 只有用户明确确认后，才运行：
 
 ```bash
@@ -140,6 +170,7 @@ python <SKILL_DIR>/scripts/workflow_state.py confirm-schedule \
 ```
 
 - 未确认时保留页面，不得提交。
+- `autonomous` 模式下不等待人工确认；先检查 `auto_publish.eligible` 和高风险类别，再直接发布。发布后记录 `published_at`、作品管理状态和去重指纹。
 
 ### `submitted` / `verified`
 
@@ -165,3 +196,5 @@ python <SKILL_DIR>/scripts/workflow_state.py confirm-schedule \
 - 抖音上传发布：`references/douyin-publish-playbook.md`
 - 断点状态机：`scripts/workflow_state.py`
 - 字幕时间轴 OCR：`scripts/ocr_subtitles.py`
+- 实战经验与硬门：`references/lessons-and-guardrails.md`
+- 自动发布策略：`references/autonomous-publish-policy.md`

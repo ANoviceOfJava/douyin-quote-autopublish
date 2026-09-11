@@ -12,11 +12,13 @@
 
 至少查看两个来源，优先三个：
 
+- 微博热搜榜：`https://s.weibo.com/top/summary`
 - 抖音热点榜、热榜、创作者中心热点或站内热门话题
-- 百度热搜：`https://top.baidu.com/board?tab=realtime`
-- 微博热搜榜
 - 今日头条热榜：`https://www.toutiao.com/hot-event/hot-board/`
+- 知乎热榜、B站热门、微信指数或同类平台
 - 权威新闻客户端、官方媒体、当事机构账号
+
+不要默认使用百度热搜。只有用户明确要求百度时，才把百度加入来源。
 
 平台页面和算法会变化。若直接 URL 失效，使用站内可见入口，不循环猜测 URL。
 
@@ -32,7 +34,7 @@
   "discovered_at": "YYYY-MM-DDTHH:MM:SS+08:00",
   "age_hours": 12,
   "source_urls": ["https://..."],
-  "heat_evidence": "抖音热点榜第 3；百度热搜第 5",
+  "heat_evidence": "微博热搜第 3；抖音热点榜第 5",
   "fact_status": "confirmed",
   "fact_note": "官方媒体已确认，当事人已回应",
   "video_candidates": 3,
