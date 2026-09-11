@@ -4,11 +4,13 @@
 
 ## 特性
 
-- 最新热点发现与 24/72 小时时效门
+- 抖音站内热榜 + 搜索热点优先的 24/72 小时热点发现
+- Codex iab 内置浏览器优先与外部浏览器禁止静默回退
+- 悬空工具调用、会话失败和浏览器中断恢复
 - 事实核验和标题/正文一致性检查
 - 视频字幕时间轴 OCR
 - 原生字幕 3:4 金句图生成与回读质检
-- 内置浏览器登录中断与断点续跑
+- Codex 内置浏览器登录中断与断点续跑
 - 抖音图文上传、背景音乐、定时发布
 - 最终发布时间用户确认门
 - 抖音个人资料修改流程，包括头像安全验证处理
@@ -46,7 +48,7 @@ C:\Users\<user>\.codex\skills\douyin-quote-autopublish
 
 ## 工作流
 
-1. 读取热榜并记录热点年龄、来源和热度证据。
+1. 先读取抖音官方热榜、创作者中心热度和站内搜索相关词，再用站外平台交叉核验，记录热点年龄、来源和热度证据。
 2. 核验事件，淘汰过期、不可核验或高风险题材。
 3. 获取视频并 OCR 字幕时间轴。
 4. 生成 3:4 金句图并回读质检。
@@ -59,6 +61,8 @@ C:\Users\<user>\.codex\skills\douyin-quote-autopublish
 
 - `SKILL.md`: 主流程和硬约束
 - `references/latest-hot-topics.md`: 热点发现和筛选规则
+- `references/douyin-topic-discovery.md`: 抖音官方热榜与搜索热点发现
+- `references/codex-runtime-recovery.md`: Codex 会话、图标读取和浏览器故障恢复
 - `references/video-to-assets.md`: 视频到金句图流程
 - `references/douyin-publish-playbook.md`: 抖音上传、配乐、定时发布和个人资料修改
 - `scripts/workflow_state.py`: 可恢复状态机
@@ -70,6 +74,7 @@ C:\Users\<user>\.codex\skills\douyin-quote-autopublish
 - 不导出或落盘浏览器 Cookie。
 - 最终发布前必须由用户确认标题、正文、配图、音乐和发布时间。
 - 不绕过平台验证，不调用未公开的私有接口。
+- 浏览器优先使用 Codex 内置 `iab`；不得静默回退到外部浏览器。
 
 ## License
 

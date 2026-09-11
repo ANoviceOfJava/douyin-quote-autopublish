@@ -24,6 +24,9 @@ description: "自动化完成最新热点发现、抖音金句图选材、视频
 - 用户明确指定 `publish_policy=autonomous` 时，跳过人工确认并按自动发布门直接发布；高风险内容直接跳过，见 [references/autonomous-publish-policy.md](references/autonomous-publish-policy.md)。
 - 登录缺失、验证码、短信验证码、扫码确认或账号安全验证必须中断，让用户处理。不得绕过验证，不得代替用户完成 CAPTCHA，不得索取密码或验证码。
 - 复用同一个内置浏览器会话，不关闭登录页或发布页，不清理 Cookies，不导出或落盘 Cookie。优先使用 `markHandoff` 保留等待登录的页面，使用 `markDeliverable` 保留已提交结果页。
+- 浏览器默认且优先使用 Codex 内置浏览器 `iab`。`iab` 不可用时先诊断并说明阻塞，不得静默回退到外部 Chrome、Edge 或系统浏览器。
+- 当前线程出现 `No tool output found for tool call ...` 时，视为会话历史已损坏；不要反复回复“继续”。按 [references/codex-runtime-recovery.md](references/codex-runtime-recovery.md) 从磁盘状态恢复，并 fork 或新开干净线程继续。
+- 批量查看成品图片时逐张读取并等待每次工具结果返回；不要在一次工具批次里并发提交多张 `view_image`。
 - 热点、谣言、截图和网络传言必须核验“具体事件是什么、谁发布、何时发生、何时辟谣、如何定性”。标题不得只有情绪，不能出现“一个消息/一件事情”却不说明事件对象的悬空表达。
 - 原生字幕模式不得 OCR 后重绘、翻译或改写画面文字。脚本字幕只能使用已核对台词。
 - 用户明确承担版权责任不解除热点时效、事实核验、平台规则和发布前确认义务。
@@ -36,11 +39,13 @@ description: "自动化完成最新热点发现、抖音金句图选材、视频
 - `0–24 小时`：优先使用。
 - `24–72 小时`：可使用，但必须有持续发酵或新进展。
 - `超过 72 小时`：默认淘汰。只有出现新的权威进展，或用户明确要求做回顾时，才可继续。
-- 必须在微博热搜、抖音热点榜、今日头条热榜、知乎热榜、B站热门或同等平台看到明确热度信号。
+- 必须包含抖音站内热度证据：优先检查抖音官方热点榜、抖音热榜、创作者中心热点或站内搜索结果及相关搜索。不得只依赖微博、今日头条、B站、知乎等站外来源。
+- 抖音官方热榜不是全部。品牌、产品、功能和服务类事件必须再查站内搜索及相关搜索；未做这一步不得声称“已覆盖抖音热点”。例如“荣耀魔法画报”可能尚未进入当刻 Top 榜，但站内搜索和相关搜索已经形成当前事件。
+- 站外平台用于交叉核验和扩展，不可替代抖音站内热度发现。
 - 必须由至少两个独立来源交叉确认；谣言、爆料、截图类必须有权威媒体、官方账号或当事机构回应。
 - 必须能找到带烧录字幕或完整口播的视频素材，适合拆成金句图。
 - 优先“高热度 + 强共鸣 + 可核验 + 可视觉化”，不追灾难、血腥、隐私、未成年人受害、未经证实的刑事指控和金融荐股。
-- 状态文件必须记录：事件日期、首次发现时间、发现时间、当前年龄、来源 URL、热度证据和核验结论。
+- 状态文件必须记录：事件日期、首次发现时间、发现时间、当前年龄、来源 URL、抖音站内热度证据或搜索相关词、站外交叉证据和核验结论。
 
 详细来源、评分和淘汰规则见 [references/latest-hot-topics.md](references/latest-hot-topics.md)。真实执行中的叙事、原生字幕、草稿恢复、定时时间与删除坑位见 [references/lessons-and-guardrails.md](references/lessons-and-guardrails.md)。
 
@@ -133,7 +138,8 @@ python <SKILL_DIR>/scripts/workflow_state.py set \
 
 ### `browser_ready` / `login_required`
 
-- 选择内置浏览器 `iab`。
+- 必须优先且默认选择 Codex 内置浏览器 `iab`；不得静默回退到外部 Chrome、Edge 或系统浏览器。
+- `iab` 不可用时按 [references/codex-runtime-recovery.md](references/codex-runtime-recovery.md) 诊断；仍不可用时停止并说明阻塞。
 - 打开抖音创作者中心或作品发布页。
 - 若出现登录、扫码或安全验证：
   1. 更新状态为 `login_required`。
@@ -188,10 +194,13 @@ python <SKILL_DIR>/scripts/workflow_state.py confirm-schedule \
 5. 若登录状态已存在，直接复用，不重新登录。
 6. 若正文、时间或图片任一缺失，退回对应阶段补齐后再请求确认。
 7. 每次登录中断和最终确认前都要更新状态文件。
+8. 若当前线程出现悬空工具调用错误，按 [references/codex-runtime-recovery.md](references/codex-runtime-recovery.md) 换到干净线程恢复；不要继续向故障线程发送“继续”。
 
 ## 资源
 
 - 最新热点发现与筛选：`references/latest-hot-topics.md`
+- 抖音站内热点与搜索热点发现：`references/douyin-topic-discovery.md`
+- Codex 运行故障与恢复：`references/codex-runtime-recovery.md`
 - 视频到金句图：`references/video-to-assets.md`
 - 抖音上传发布：`references/douyin-publish-playbook.md`
 - 断点状态机：`scripts/workflow_state.py`

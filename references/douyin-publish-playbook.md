@@ -4,12 +4,17 @@
 
 ## 浏览器绑定
 
-使用当前会话的浏览器插件连接内置浏览器：
+默认且优先使用 Codex 内置浏览器 `iab`。不得静默回退到外部 Chrome、Edge 或系统浏览器；需要外部浏览器时必须先取得用户明确同意。
 
 ```js
 const { setupBrowserRuntime } = await import("<ACTIVE_BROWSER_PLUGIN>/scripts/browser-client.mjs");
 const agent = await setupBrowserRuntime();
-const iab = await agent.browsers.get("iab");
+
+const browsers = await agent.browsers.list();
+const iabInfo = browsers.find((item) => item.type === "iab");
+if (!iabInfo) throw new Error("Codex 内置浏览器 iab 不可用，停止操作并说明阻塞");
+
+const iab = await agent.browsers.get(iabInfo.id);
 await iab.nameSession("📌 抖音金句图自动发布");
 
 const tabs = await iab.tabs.list();
@@ -19,6 +24,8 @@ const tab = tabs.length > 0 ? await iab.tabs.get(tabs[0].id) : await iab.tabs.ne
 - 复用同一个 `iab` 绑定和已保留标签。
 - 登录页、发布页或内容管理页需要跨回合时执行 `markHandoff()`；已提交结果页执行 `markDeliverable()`。
 - 不关闭登录标签，不清理 Cookies，不退出账号。
+- 若 `nodeRepl.rpc` 不是可调用函数、`agent.browsers.list()` 没有 `iab`，或浏览器服务持续报错，按 [codex-runtime-recovery.md](codex-runtime-recovery.md) 处理，不要改用外部浏览器。
+- 同名文本可能有多个节点；点击“选择音乐”“使用”等按钮前先用 `filter({ visible: true })` 排除隐藏节点。
 
 ## 登录中断协议
 
@@ -74,7 +81,7 @@ await editor.fill(description);
 1. 点击“选择音乐”。
 2. 在搜索框搜索情绪、类型或曲名。
 3. 点击具体曲目，确认出现该曲目的标题、作者、时长和试听进度。
-4. 点击“使用”。
+4. 点击当前可见的“使用”按钮；同名隐藏节点不能使用。
 5. 回读“修改音乐”区域，确认名字与作者正确。
 
 选择原则：
@@ -113,6 +120,15 @@ await editor.fill(description);
 ```
 
 写入状态文件并点击“发布”。
+
+## 发布按钮无响应
+
+如果已点击“发布”但 URL 和页面状态没有变化：
+
+1. 检查按钮是否可见、可用，确认没有必填项错误、登录弹窗或遮罩层。
+2. 读取当前 URL 并截图；页面仍在上传页时不要反复点击。
+3. 排除阻塞后，再执行一次带超时的 `force: true` 点击。
+4. 仍无变化时重新加载发布页并检查草稿；不要通过连续点击制造重复提交。
 
 ## 提交后验证
 
