@@ -15,7 +15,7 @@ const iabInfo = browsers.find((item) => item.type === "iab");
 if (!iabInfo) throw new Error("Codex 内置浏览器 iab 不可用，停止操作并说明阻塞");
 
 const iab = await agent.browsers.get(iabInfo.id);
-await iab.nameSession("📌 抖音金句图自动发布");
+await iab.nameSession("📌 抖音热点事件图文自动发布");
 
 const tabs = await iab.tabs.list();
 const tab = tabs.length > 0 ? await iab.tabs.get(tabs[0].id) : await iab.tabs.new();
@@ -48,16 +48,26 @@ https://creator.douyin.com/creator-micro/home
 1. 打开创作者首页。
 2. 点击“发布图文”。
 3. 等待上传页出现 `input[type="file"]`。
-4. 用 file chooser 一次上传按顺序排列的 JPG/PNG：
+4. `event-cover-carousel` 模式只上传 `assets.content_images` 按顺序排列的 4 个绝对路径：
 
 ```js
 const chooserPromise = tab.playwright.waitForEvent("filechooser", { timeoutMs: 20000 });
 await tab.ax.click(<选择文件按钮序号>);
 const chooser = await chooserPromise;
-await chooser.setFiles(["/absolute/path/01.jpg", "/absolute/path/02.jpg"]);
+await chooser.setFiles([
+  "/absolute/path/01-event-summary.jpg",
+  "/absolute/path/02-frame-cause.jpg",
+  "/absolute/path/03-frame-conflict.jpg",
+  "/absolute/path/04-frame-evidence.jpg",
+]);
 ```
 
-5. 回读“已添加 N 张图片”，N 必须与状态文件一致。
+`assets.cover_path` 绝不能放进这个上传列表。
+
+5. 回读“已添加 4 张图片”，确认正文图片数量和顺序与 `assets.content_images` 一致。
+6. 进入“编辑封面”或“设置封面”入口，单独上传或选择 `assets.cover_path`，回读封面预览与 `assets.cover_text` 一致。
+7. 如果平台只能从正文图片中选择封面，无法设置独立封面，停止并说明限制，不得把 `cover_path` 临时塞进正文。
+8. `native-subtitle-quote` 模式按状态文件 `images` 的顺序上传拼图，并回读图片数量；该模式不要求独立封面。
 
 ## 标题和正文
 
@@ -108,7 +118,8 @@ await editor.fill(description);
 - 平台和账号
 - 标题
 - 正文首段或全文
-- 图片数量
+- 独立封面路径与封面事件名
+- 正文图片数量与四图顺序
 - 背景音乐名称和作者
 - 可见范围
 - 完整发布时间
@@ -161,10 +172,10 @@ await editor.fill(description);
 9. 回读主页昵称、简介和头像 URL，确认全部生效。
 
 如果验证页、头像裁剪框或资料弹窗被关闭，重新进入个人主页从头执行；不要调用私有接口。
-## 混合原始图文发布
+## 事件封面图文发布
 
-- 图片顺序固定为：封面、完整说明、事件图1、事件图2、事件图3。
-- 封面使用原事件画面并叠加短事件名。
+- 正文只上传 `assets.content_images`，固定 4 张，顺序为：白底说明、事件截图1、事件截图2、事件截图3。
+- 作品封面单独使用 `assets.cover_path`，封面不得出现在正文图片中。
 - 标题填写短事件名，正文只填标签。
 - 不要同时保留多条未发布草稿。每条提交后回内容管理核验，再处理下一条。
-- 多条定时发布时，逐条核对日期、时间和作品张数。
+- 多条定时发布时，逐条核对独立封面、日期、时间、正文张数和作品状态。

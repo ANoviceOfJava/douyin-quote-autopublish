@@ -25,6 +25,7 @@ STAGES = [
 
 TERMINAL_BEFORE_CONFIRM = {"submitted", "verified"}
 SOURCE_ROLES = {"exposure", "commentary", "official", "user_supplied"}
+ASSET_MODES = {"event-cover-carousel", "native-subtitle-quote"}
 STAGE_INDEX = {stage: index for index, stage in enumerate(STAGES)}
 
 
@@ -95,6 +96,7 @@ def cmd_init(args: argparse.Namespace) -> None:
         "topic": {},
         "source": {"role": None, "published_at": None, "heat_evidence": None},
         "content": {"angle": None, "must_include": [], "excluded_outcomes": [], "title": None, "tags": [], "caption_mode": None, "template": None},
+        "assets": {"mode": "event-cover-carousel", "cover_path": None, "cover_text": None, "content_images": []},
         "images": [],
         "music": {},
         "publish_policy": "confirm",
@@ -152,6 +154,54 @@ def cmd_confirm_schedule(args: argparse.Namespace) -> None:
     print(json.dumps(schedule, ensure_ascii=False, indent=2))
 
 
+def validate_assets(state: dict[str, Any], stage_index: int) -> list[str]:
+    """Validate the selected asset layout before upload."""
+    if stage_index < STAGE_INDEX["assets_ready"]:
+        return []
+    assets = state.get("assets")
+    if not isinstance(assets, dict):
+        return ["assets must be an object"]
+    mode = assets.get("mode")
+    if mode not in ASSET_MODES:
+        return ["assets.mode must be event-cover-carousel/native-subtitle-quote"]
+    if mode == "native-subtitle-quote":
+        images = state.get("images")
+        if not isinstance(images, list) or not images:
+            return ["native-subtitle-quote requires images"]
+        return []
+
+    errors: list[str] = []
+    cover_path = assets.get("cover_path")
+    if not isinstance(cover_path, str) or not cover_path.strip():
+        errors.append("event-cover-carousel requires assets.cover_path")
+    elif not Path(cover_path).is_file():
+        errors.append(f"assets.cover_path does not exist: {cover_path}")
+    cover_text = assets.get("cover_text")
+    if not isinstance(cover_text, str) or not cover_text.strip():
+        errors.append("event-cover-carousel requires assets.cover_text")
+
+    content_images = assets.get("content_images")
+    if not isinstance(content_images, list) or len(content_images) != 4:
+        errors.append("event-cover-carousel requires exactly 4 assets.content_images")
+        return errors
+
+    normalized: list[str] = []
+    for index, image_path in enumerate(content_images):
+        if not isinstance(image_path, str) or not image_path.strip():
+            errors.append(f"assets.content_images[{index}] must be a non-empty path")
+            continue
+        if not Path(image_path).is_file():
+            errors.append(f"assets.content_images[{index}] does not exist: {image_path}")
+        normalized.append(os.path.normcase(os.path.abspath(image_path)))
+    if len(normalized) == 4 and len(set(normalized)) != 4:
+        errors.append("assets.content_images must contain 4 distinct files")
+    if isinstance(cover_path, str) and cover_path.strip():
+        normalized_cover = os.path.normcase(os.path.abspath(cover_path))
+        if normalized_cover in normalized:
+            errors.append("assets.cover_path must not appear in assets.content_images")
+    return errors
+
+
 def validate_state(state: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     if state.get("version") != 1:
@@ -185,6 +235,7 @@ def validate_state(state: dict[str, Any]) -> list[str]:
     if stage_index >= STAGE_INDEX["content_ready"]:
         if not isinstance(content, dict) or not content.get("angle"):
             errors.append("content.angle is required before upload")
+    errors.extend(validate_assets(state, stage_index))
     schedule = state.get("schedule")
     if not isinstance(schedule, dict):
         errors.append("schedule must be an object")
