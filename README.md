@@ -30,7 +30,15 @@ Windows 默认位置：
 C:\Users\<user>\.codex\skills\douyin-quote-autopublish
 ```
 
-安装后可在新任务中调用：
+不需要手工安装 Python 包。首次调用 skill 时，`SKILL.md` 会要求 Codex 先运行：
+
+```bash
+python scripts/run.py check
+```
+
+该命令会自动创建私有虚拟环境并安装依赖，不需要手工执行 `pip install`，也不需要系统安装 FFmpeg。环境默认放在 `%CODEX_HOME%\cache\douyin-quote-autopublish\venv`，非 Windows 对应 `$CODEX_HOME/cache/douyin-quote-autopublish/venv`。
+
+之后可在新任务中调用：
 
 ```text
 用 $douyin-quote-autopublish 找今天最新的热点，制作独立事件封面和正文四图，并定时发布
@@ -38,14 +46,21 @@ C:\Users\<user>\.codex\skills\douyin-quote-autopublish
 
 ## 依赖
 
-- Codex 内置浏览器
-- `native-subtitle-quote-image` Skill
-- Python 3.10+
-- `ffmpeg` / `ffprobe`
-- `yt-dlp`
-- `rapidocr-onnxruntime`
+自动安装：
+
 - `opencv-python`
+- `rapidocr-onnxruntime`
 - `Pillow`
+- `yt-dlp`
+- `imageio-ffmpeg`：自带 FFmpeg 二进制
+
+外部能力：
+
+- Codex 内置浏览器 `iab`
+- Python 3.10+；若系统没有 Python，可使用 Codex 内置 Python 运行 `run.py`
+- `native-subtitle-quote-image` Skill：仅原生字幕金句拼图模式需要，默认图文模式不需要
+
+首次安装依赖需要网络。
 
 ## 工作流
 
@@ -66,6 +81,9 @@ C:\Users\<user>\.codex\skills\douyin-quote-autopublish
 - `references/codex-runtime-recovery.md`: Codex 会话、图标读取和浏览器故障恢复
 - `references/video-to-assets.md`: 视频到独立封面和正文四图流程
 - `references/douyin-publish-playbook.md`: 抖音上传、配乐、定时发布和个人资料修改
+- `requirements.txt`: 可移植 Python 依赖清单
+- `scripts/run.py`: 自动自举环境并提供 OCR、yt-dlp、FFmpeg 统一入口
+- `scripts/runtime_env.py`: 私有虚拟环境创建和校验
 - `scripts/workflow_state.py`: 可恢复状态机
 - `scripts/ocr_subtitles.py`: 字幕 OCR 时间轴工具
 

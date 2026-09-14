@@ -21,6 +21,21 @@ description: "自动化完成最新热点发现、事件封面与正文图文制
 1. 在登录失效时，在浏览器里完成登录。
 2. 在最终提交前，确认发布时间。
 
+## 运行环境自举
+
+每个新任务开始、读取热点之前先运行：
+
+```bash
+python <SKILL_DIR>/scripts/run.py check
+```
+
+- 首次运行会自动在 `%CODEX_HOME%\cache\douyin-quote-autopublish\venv`（非 Windows 为 `$CODEX_HOME/cache/...`）创建私有 Python 虚拟环境，并按 `requirements.txt` 自动安装依赖。
+- 不需要手工执行 `pip install`，不需要系统安装 FFmpeg；OCR 和取帧使用 `imageio-ffmpeg` 提供的 FFmpeg 二进制。
+- 后续统一使用 `<SKILL_DIR>/scripts/run.py` 运行 `ocr`、`yt-dlp` 和 `ffmpeg` 命令。
+- 默认 `event-cover-carousel` 模式不依赖 `native-subtitle-quote-image`。只有用户明确要求原生字幕金句拼图时才检查并调用该 Skill。
+- 如果系统没有 Python 3.10+，先调用 Codex 的 `load_workspace_dependencies` 获取内置 Python，再用它执行 `run.py`。
+- 首次准备环境需要联网下载依赖；安装失败时停止任务并报告原始错误，不要求用户逐项手工安装。
+
 ## 不可违反的规则
 
 - 内容默认追最新热点，不从旧素材池里挑过时话题冒充热点。热点新鲜度和事实核验与画面质量同等重要。
@@ -214,6 +229,8 @@ python <SKILL_DIR>/scripts/workflow_state.py confirm-schedule \
 
 ## 资源
 
+- 运行环境自举与命令入口：`scripts/run.py`
+- Python 依赖清单：`requirements.txt`
 - 最新热点发现与筛选：`references/latest-hot-topics.md`
 - 抖音站内热点与搜索热点发现：`references/douyin-topic-discovery.md`
 - Codex 运行故障与恢复：`references/codex-runtime-recovery.md`

@@ -1,4 +1,4 @@
-"""Persist and resume the Douyin quote-image publishing workflow."""
+"""Persist and resume the Douyin event-image publishing workflow."""
 from __future__ import annotations
 
 import argparse

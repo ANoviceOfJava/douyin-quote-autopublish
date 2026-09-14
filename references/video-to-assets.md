@@ -22,7 +22,7 @@
 - `commentary`：后发评论、解读或律师分析。
 - `official`：官方通报和新闻播报，默认用于事实核验，不替代曝光视频。
 
-在线视频优先使用 `yt-dlp`，已有 Cookies 时复用本地 Cookie 文件；没有时优先 `--cookies-from-browser`。如果平台要求登录：
+在线视频优先使用 `run.py` 内置的 `yt-dlp`，已有 Cookies 时复用本地 Cookie 文件；没有时优先 `--cookies-from-browser`。如果平台要求登录：
 
 1. 停止下载。
 2. 让用户在内置浏览器中登录。
@@ -32,10 +32,10 @@
 示例：
 
 ```bash
-yt-dlp --cookies-from-browser edge --skip-download \
+python <SKILL_DIR>/scripts/run.py yt-dlp --cookies-from-browser edge --skip-download \
   --print "%(title)s|%(uploader)s|%(duration)s|%(description)s" "<VIDEO_URL>"
 
-yt-dlp --cookies-from-browser edge \
+python <SKILL_DIR>/scripts/run.py yt-dlp --cookies-from-browser edge \
   -o "<WORK_DIR>/downloads/%(id)s.mp4" "<VIDEO_URL>"
 ```
 
@@ -44,7 +44,7 @@ yt-dlp --cookies-from-browser edge \
 先抽帧和 OCR，确认字幕在画面里的纵向位置。两行烧录字幕常见于 `0.72–0.92`，单行常见于 `0.75–0.90`。
 
 ```bash
-python <SKILL_DIR>/scripts/ocr_subtitles.py \
+python <SKILL_DIR>/scripts/run.py ocr \
   --video "<VIDEO_PATH>" \
   --out "<WORK_DIR>/subtitle-lines.json" \
   --band-top 0.72 --band-bottom 0.92 --fps 2

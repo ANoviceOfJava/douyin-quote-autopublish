@@ -11,11 +11,12 @@ from pathlib import Path
 from typing import Any
 
 import cv2
+from imageio_ffmpeg import get_ffmpeg_exe
 from rapidocr_onnxruntime import RapidOCR
 
 
 def extract_frames(video: Path, frame_dir: Path, fps: float, max_seconds: float | None) -> None:
-    command = ["ffmpeg", "-y", "-v", "error", "-i", str(video)]
+    command = [get_ffmpeg_exe(), "-y", "-v", "error", "-i", str(video)]
     if max_seconds is not None:
         command += ["-t", f"{max_seconds:g}"]
     command += ["-vf", f"fps={fps:g}", str(frame_dir / "%06d.png")]
